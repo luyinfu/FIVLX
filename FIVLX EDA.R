@@ -10,16 +10,21 @@ MSCI_EAFE_Val <- readxl::read_excel("msci_eafe_val.xls",
                             skip = 6)
 CAC40 <- read.csv("CAC40.csv", 
                     header = TRUE, sep = ",")
+FTSE <- readxl::read_excel("historic-ftse-index-values.xlsx", 
+                           skip = 16)
+FTSE %<>% select(Date, `FTSE 100`)
 
 MSCI_EAFE_Val$Date <- as.Date(MSCI_EAFE_Val$Date, "%Y-%m-%d")
 FIVLX$Date<- as.Date(FIVLX$Date, "%Y-%m-%d")
 CAC40$Date<- as.Date(CAC40$Date, "%Y-%m-%d")
+FTSE$Date <- as.Date(FTSE$Date, "%Y-%m-%d")
 FIVLX %<>% select(Date, Close) %>% rename(FIVLX=Close)
 CAC40 %<>% select(Date, Close) %>% rename(CAC40=Close)
 
 #merge price data by date
 data <- merge( FIVLX, MSCI_EAFE_Val, by = "Date")
 data <- merge( data, CAC40, by = "Date")
+data <- merge(data, FTSE)
 data <- rename(data, MSCI_Val=`EAFE VALUE Standard (Large+Mid Cap) Value`)
 data$CAC40 <- as.numeric(as.character(data$CAC40))#??????
 
@@ -27,7 +32,8 @@ data$CAC40 <- as.numeric(as.character(data$CAC40))#??????
 MSCI_Val_return <- diff(log(data$MSCI_Va), differences=1)
 FIVLX_return <- diff(log(data$FIVLX), differences=1)
 CAC40_return <- diff(log(data$CAC40), differences=1)
-log_return <- data.frame(cbind(MSCI_Val_return,FIVLX_return, CAC40_return))
+FTSE_return <- diff(log(data$`FTSE 100`), differences=1)
+log_return <- data.frame(cbind(MSCI_Val_return,FIVLX_return, CAC40_return, FTSE_return))
 log_return <- cbind(data$Date[2:length(data$Date)],log_return)
 log_return %<>% rename(Date=`data$Date[2:length(data$Date)]`)
 
@@ -35,9 +41,9 @@ log_return %<>% rename(Date=`data$Date[2:length(data$Date)]`)
 #visualization
 ggplot(data)+
   geom_line(aes(x=Date, y=10000*(FIVLX/data$FIVLX[1])))+
-  geom_line(aes(x=Date, y=10000*(MSCI_Val/data$MSCI_Val[1])))+
-  geom_line(aes(x=Date, y=10000*(CAC40/data$CAC40[1])))
-  
+  geom_line(aes(x=Date, y=10000*(MSCI_Val/data$MSCI_Val[1]), color="red"))+
+  geom_line(aes(x=Date, y=10000*(CAC40/data$CAC40[1]), color="green"))+
+  geom_line(aes(x=Date, y=10000*(`FTSE 100`/data$`FTSE 100`[1]), color="blue"))
 COR <- cor(data[-c(1,2)])
 corrplot::corrplot(COR, type = "upper", order = "hclust", 
                    tl.col = "black", tl.srt = 45)
