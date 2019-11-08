@@ -13,18 +13,22 @@ CAC40 <- read.csv("CAC40.csv",
 FTSE <- readxl::read_excel("historic-ftse-index-values.xlsx", 
                            skip = 16)
 FTSE %<>% select(Date, `FTSE 100`)
+NIKKEI <- read.csv("^N225.csv", 
+                   header = TRUE, sep = ",")
 
 MSCI_EAFE_Val$Date <- as.Date(MSCI_EAFE_Val$Date, "%Y-%m-%d")
 FIVLX$Date<- as.Date(FIVLX$Date, "%Y-%m-%d")
 CAC40$Date<- as.Date(CAC40$Date, "%Y-%m-%d")
 FTSE$Date <- as.Date(FTSE$Date, "%Y-%m-%d")
+NIKKEI$Date <- as.Date(NIKKEI$Date, "%Y-%m-%d")
 FIVLX %<>% select(Date, Close) %>% rename(FIVLX=Close)
 CAC40 %<>% select(Date, Close) %>% rename(CAC40=Close)
-
+NIKKEI%<>% select(Date, Close) %>% rename(NIKKEI=Close)
 #merge price data by date
 data <- merge( FIVLX, MSCI_EAFE_Val, by = "Date")
 data <- merge( data, CAC40, by = "Date")
-data <- merge(data, FTSE)
+data <- merge(data, FTSE, by = "Date")
+data <- merge(data, NIKKEI, by = "Date")
 data <- rename(data, MSCI_Val=`EAFE VALUE Standard (Large+Mid Cap) Value`)
 data$CAC40 <- as.numeric(as.character(data$CAC40))#??????
 
@@ -51,9 +55,9 @@ corrplot::corrplot(COR, type = "upper", order = "hclust",
 #---------------------------------------------------
 #linear regression
 
-fit1 <- lm(FIVLX_return~MSCI_Val_return+CAC40_return ,data = log_return)
+fit1 <- lm(FIVLX_return~MSCI_Val_return+CAC40_return, data = log_return)
 summary(fit1)
-
+plot(fit1, which = 1)
 
 
 
