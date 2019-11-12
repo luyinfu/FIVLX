@@ -15,52 +15,80 @@ FTSE <- readxl::read_excel("historic-ftse-index-values.xlsx",
 FTSE %<>% select(Date, `FTSE 100`)
 NIKKEI <- read.csv("^N225.csv", 
                    header = TRUE, sep = ",")
+MSCI_Europe <- read.csv("MSCI\ Europe\ Historical\ Data.csv",header = TRUE, sep = ",")
 
 MSCI_EAFE_Val$Date <- as.Date(MSCI_EAFE_Val$Date, "%Y-%m-%d")
 FIVLX$Date<- as.Date(FIVLX$Date, "%Y-%m-%d")
 CAC40$Date<- as.Date(CAC40$Date, "%Y-%m-%d")
 FTSE$Date <- as.Date(FTSE$Date, "%Y-%m-%d")
 NIKKEI$Date <- as.Date(NIKKEI$Date, "%Y-%m-%d")
+MSCI_Europe$Date<- as.Date(MSCI_Europe$Date, "%d-%b-%y")
+
 FIVLX %<>% select(Date, Close) %>% rename(FIVLX=Close)
 CAC40 %<>% select(Date, Close) %>% rename(CAC40=Close)
-NIKKEI%<>% select(Date, Close) %>% rename(NIKKEI=Close)
+NIKKEI%<>% select(Date, Close) %>% rename(NIKKEI=Close) %>% 
+  filter(NIKKEI!="null")
+MSCI_Europe %<>% select(Date, Price) %>% rename(MSCI_Europe=Price)
 #merge price data by date
 data <- merge( FIVLX, MSCI_EAFE_Val, by = "Date")
 data <- merge( data, CAC40, by = "Date")
 data <- merge(data, FTSE, by = "Date")
 data <- merge(data, NIKKEI, by = "Date")
+data <- merge(data, MSCI_Europe, by = "Date")
 data <- rename(data, MSCI_Val=`EAFE VALUE Standard (Large+Mid Cap) Value`)
 data$CAC40 <- as.numeric(as.character(data$CAC40))#??????
+data$NIKKEI <- as.numeric(as.character(data$NIKKEI))
+
+
 
 #calculate log return
 MSCI_Val_return <- diff(log(data$MSCI_Va), differences=1)
 FIVLX_return <- diff(log(data$FIVLX), differences=1)
 CAC40_return <- diff(log(data$CAC40), differences=1)
 FTSE_return <- diff(log(data$`FTSE 100`), differences=1)
-log_return <- data.frame(cbind(MSCI_Val_return,FIVLX_return, CAC40_return, FTSE_return))
+NIKKEI_return <- diff(log(data$NIKKEI), differences=1)
+MSCI_Europe_return <- diff(log(data$MSCI_Europe), differences=1)
+log_return <- data.frame(cbind(MSCI_Val_return,FIVLX_return, CAC40_return, FTSE_return, NIKKEI_return, MSCI_Europe_return))
 log_return <- cbind(data$Date[2:length(data$Date)],log_return)
 log_return %<>% rename(Date=`data$Date[2:length(data$Date)]`)
 
-#---------------------------------------------------
-#visualization
-ggplot(data)+
+#------------------------------- --------------------
+# visualization
+library(plotly)
+## holding period return
+p1 <- ggplot(data)+
   geom_line(aes(x=Date, y=10000*(FIVLX/data$FIVLX[1])))+
-  geom_line(aes(x=Date, y=10000*(MSCI_Val/data$MSCI_Val[1]), color="red"))+
-  geom_line(aes(x=Date, y=10000*(CAC40/data$CAC40[1]), color="green"))+
-  geom_line(aes(x=Date, y=10000*(`FTSE 100`/data$`FTSE 100`[1]), color="blue"))
+  geom_line(aes(x=Date, y=10000*(MSCI_Val/data$MSCI_Val[1]), color="MSCI_Val"))+
+  geom_line(aes(x=Date, y=10000*(CAC40/data$CAC40[1]), color="CAC40"))+
+  geom_line(aes(x=Date, y=10000*(`FTSE 100`/data$`FTSE 100`[1]), color="FTSE 100"))+
+  geom_line(aes(x=Date, y=10000*(NIKKEI/data$NIKKEI[1]), color="NIKKEI"))+
+  geom_line(aes(x=Date, y=10000*(MSCI_Europe/data$MSCI_Europe[1]), color="MSCI_Europe"))+
+  ylab("holding period return")
+
+ggplotly(p1)
+
+## correlation
 COR <- cor(data[-c(1,2)])
 corrplot::corrplot(COR, type = "upper", order = "hclust", 
                    tl.col = "black", tl.srt = 45)
 
+pairs(~MSCI_Val+CAC40+`FTSE 100`+NIKKEI, data)
+car::scatterplotMatrix(~MSCI_Val+CAC40+`FTSE 100`+NIKKEI, data)
+car::scatterplotMatrix(~MSCI_Val+CAC40+`FTSE 100`+NIKKEI, diagonal=F, smooth=F, data)
+
+
 #---------------------------------------------------
 #linear regression
 
-fit1 <- lm(FIVLX_return~MSCI_Val_return+CAC40_return, data = log_return)
+fit1 <- lm(FIVLX_return~MSCI_Val_return, data = log_return)
 summary(fit1)
 plot(fit1, which = 1)
 
+fit2 <- lm(FIVLX_return~MSCI_Europe_return, data = log_return)
+summary(fit2)
+plot(fit2, which = 1)
 
-
+COR <- cor(data[-1])
 # # plot(FIVLX$Close, type = 'l', xlab = '', ylab = '')
 # # FIVLX_1year <- filter(FIVLX, Date>='2018-10-07')
 # # plot(FIVLX_1year$Date, FIVLX_1year$Close, type = 'l', xlab = '', ylab = '')
