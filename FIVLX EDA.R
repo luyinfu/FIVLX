@@ -78,7 +78,7 @@ car::scatterplotMatrix(~MSCI_Val+CAC40+`FTSE 100`+NIKKEI, diagonal=F, smooth=F, 
 
 
 #---------------------------------------------------
-#linear regression
+# linear regression
 
 fit1 <- lm(FIVLX_return~MSCI_Val_return, data = log_return)
 summary(fit1)
@@ -89,6 +89,33 @@ summary(fit2)
 plot(fit2, which = 1)
 
 COR <- cor(data[-1])
+
+
+
+## Kolmogorov–Smirnov test
+ks.test(FIVLX_return, MSCI_Val_return)
+ks.test(FIVLX_return, MSCI_Europe_return)
+
+
+
+
+
+# dynamic time warp
+## Find the best match with the canonical recursion formula
+library(dtw)
+alignment<-dtw(FIVLX_return, MSCI_Val_return,keep=TRUE)
+## Display the warping curve, i.e. the alignment curve
+plot(alignment,type="threeway")
+plot(alignment$index1,alignment$index2,main="Warping function")
+
+alignment2<-dtw(FIVLX_return, MSCI_Europe_return, keep=TRUE)
+plot(alignment2,type="threeway")
+plot(alignment2$index1,alignment$index2,main="Warping function")
+
+
+
+
+
 # # plot(FIVLX$Close, type = 'l', xlab = '', ylab = '')
 # # FIVLX_1year <- filter(FIVLX, Date>='2018-10-07')
 # # plot(FIVLX_1year$Date, FIVLX_1year$Close, type = 'l', xlab = '', ylab = '')
